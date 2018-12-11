@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>welcome to feed-statistics</title>
+    <meta http-equiv="Content-Type" contents="text/html; charset=UTF-8" />
+</head>
+<body>
+
+<p th:text="'现在时间：'+ ${#temporals.day(date)}"></p>
+<p th:text="'Hello ' + ${name} + '，welcome to feed-statistics!'" ></p>
+<p><a href="#" th:href="@{properties}">System Properties</a></p>
+<p><a th:href="@{assets/jquery-3.2.1.min.js}">Content路径,默认访问static下的jquery-1.10.2.min.js文件夹</a></p>
+<p><a th:href="@{feedmanager.html}">外网查询指定日期内数据统计</a></p>
+
+</body>
+</html>

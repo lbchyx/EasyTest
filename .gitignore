@@ -1,0 +1,11 @@
+.idea/
+*.pyc
+target
+.project
+.classpath
+.settings
+.metadata/
+.recommenders/
+Servers/
+.gitreview
+*.iml

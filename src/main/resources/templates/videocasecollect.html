@@ -1,0 +1,180 @@
+    <div class="container">
+        <div class="row">
+            <h1 class="text-center">Feed<small>-collect</small></h1>
+        </div>
+
+        <div class="row">
+            <!--添加时间控件-->
+            <div class="input-group date date-picker margin-bottom-5">
+                <input type="text" class="form-control form-filter input-sm" readonly="readonly" id="queryByDate" placeholder="请选择日期"/>
+            </div>
+        </div>
+        <div class="row">
+            <table class="table table-striped table-bordered table-hover text-center">
+                <!--表头-->
+                <thead>
+                <tr class="info">
+                    <th class="text-center">统计时间</th>
+                    <th class="success text-center">套壳总量</th>
+                    <th class="text-center">套壳成功数量</th>
+                    <th class="danger text-center">套壳成功率</th>
+                    <th class="text-center">失败原因</th>
+                    <th class="text-center">扩展</th>
+                </tr>
+                </thead>
+                <tbody id="tableData">
+                </tbody>
+            </table>
+        </div>
+        <div class="row">
+            <!--添加分页控件-->
+            <ul id="pages"></ul>
+        </div>
+    </div>
+
+
+<script type="text/javascript">
+    $(function(){
+		var queryByDateBox = $("#queryByDate");
+        queryByDateBox.datetimepicker({
+            //showOn: "button",
+            //buttonImage: "./css/images/icon_calendar.gif",
+            //buttonImageOnly: true,
+            showSecond: true,
+            timeFormat: 'hh:mm:ss',
+            stepHour: 1,
+            stepMinute: 1,
+            stepSecond: 1,
+            onClose: function(dateText, inst) {
+                if(queryByDateBox.val()==""){
+                    alert("请选择日期！！");
+                    return;
+                 }
+                var timeData = queryByDateBox.datetimepicker('getDate').getTime();
+                getData(timeData);
+            }
+        });
+	});
+
+    //根据日期查询当日数据
+    function getData(timeData){
+        $("#pages").html("");
+    	var datas = {"data":timeData,"page":0};
+    	jQuery.ajax({
+			type : "GET",
+			//禁用缓存，否则只要url不变，只返回第一执行结果
+			cache:false,
+			url : getRootPath()+"/getDatas",
+			dataType : 'json',
+			data : datas,
+			success : function(data) {
+			    if(data.msg=="success"){
+			        if(data.page==null || data.page.numberOfElements==0){
+			            $("#tableData").html("");
+			            $("#pages").html("");
+                        alert("数据为空");
+                        return;
+			        }
+			    }
+				$("#tableData").html("");
+				var tabDataHtml="";
+				$.each(data.page.content,function(i,item){
+                    var jsonObj = eval('(' + item.failReason + ')');
+					tabDataHtml+='<tr>';
+					tabDataHtml+='<td>'+item.createTime+'</td>';
+					tabDataHtml+='<td>'+item.total+'</td>';
+					tabDataHtml+='<td>'+item.successNum+'</td>';
+					tabDataHtml+='<td>'+item.successRate+'</td>';
+					tabDataHtml+='<td>';
+					for(var key in jsonObj){
+					    if(key == "T00006"){
+					        tabDataHtml+='创建feed失败:'+jsonObj[key]+'<br/>';
+					    }
+					    if(key == "T00005"){
+					        tabDataHtml+='被过滤:'+jsonObj[key]+'<br/>';
+					    }
+
+					}
+					tabDataHtml+='</td>';
+					tabDataHtml+='<td>'+item.extend+'</td>';
+					tabDataHtml+='</tr>';
+				});
+				$("#tableData").html(tabDataHtml);
+				alert("共获取了"+data.page.numberOfElements+"条数据");
+				//分页功能
+                var options = {
+                    bootstrapMajorVersion: 3,
+                    currentPage:1,
+                    totalPages:data.page.totalPages,
+                    itemTexts: function (type, page, current) {
+                                  switch (type) {
+                                    case "first":
+                                      return "首页";
+                                    case "prev":
+                                      return "上一页";
+                                    case "next":
+                                      return "下一页";
+                                    case "last":
+                                      return "末页";
+                                    case "page":
+                                      return page;
+                                  }
+                    },
+                    onPageClicked: function (event, originalEvent, type, page) {
+                        var datas = {"data":timeData,"page":page-1};
+                        jQuery.ajax({
+                            type : "GET",
+                            //禁用缓存，否则只要url不变，只返回第一执行结果
+                            cache:false,
+                            url : getRootPath()+"/getDatas",
+                            dataType : 'json',
+                            data : datas,
+                            success : function(data) {
+                                if(data.msg=="success"){
+                                    if(data.page==null || data.page.numberOfElements==0){
+                                        $("#tableData").html("");
+                                        $("#pages").html("");
+                                        alert("数据为空");
+                                        return;
+                                    }
+                                }
+                               $("#tableData").html("");
+                                var tabDataHtml="";
+                                $.each(data.page.content,function(i,item){
+                                    var jsonObj = eval('(' + item.failReason + ')');
+                                    tabDataHtml+='<tr>';
+                                    tabDataHtml+='<td>'+item.createTime+'</td>';
+                                    tabDataHtml+='<td>'+item.total+'</td>';
+                                    tabDataHtml+='<td>'+item.successNum+'</td>';
+                                    tabDataHtml+='<td>'+item.successRate+'</td>';
+                                    tabDataHtml+='<td>';
+                                    for(var key in jsonObj){
+                                        if(key == "T00006"){
+                                            tabDataHtml+='创建feed失败:'+jsonObj[key]+'<br/>';
+                                        }
+                                        if(key == "T00005"){
+                                            tabDataHtml+='被过滤:'+jsonObj[key]+'<br/>';
+                                        }
+
+                                    }
+                                    tabDataHtml+='</td>';
+                                    tabDataHtml+='<td>'+item.extend+'</td>';
+                                    tabDataHtml+='</tr>';
+                                });
+                                $("#tableData").html(tabDataHtml);
+                                alert("共获取了"+data.page.numberOfElements+"条数据");
+                            },
+                            error:function(data){
+                                    alert("数据获取失败！");
+                            }
+                        });
+                    }
+                }
+                $('#pages').bootstrapPaginator(options);
+			},
+			error:function(data){
+				alert("数据获取失败！");
+			}
+		});
+    }
+</script>

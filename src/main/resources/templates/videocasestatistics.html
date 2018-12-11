@@ -1,0 +1,370 @@
+<div class="portlet-body col-md-10 col-md-offset-1">
+    <div class="table-container">
+        <table class="table table-striped table-bordered table-hover" id="datatable_ajax">
+            <thead>
+            <tr role="row" class="heading">
+                <th width="5%">
+                    视频tvid
+                </th>
+                <th width="10%">
+                    更新时间
+                </th>
+                <th width="10%">
+                    套壳状态
+                </th>
+                <th width="10%">
+                    统计类型
+                </th>
+                <th width="10%">
+                    错误码
+                </th>
+                <th width="10%">
+                    视频状态
+                </th>
+                <th width="5%">
+                    操作
+                </th>
+            </tr>
+            <tr role="row" class="filter">
+                <td>
+                    <input type="text" class="form-control form-filter input-sm" id="tvId"/>
+                </td>
+                <td>
+                    <div class="input-group date date-picker margin-bottom-5">
+                        <input type="text" class="form-control form-filter input-sm" readonly="readonly" id="updateStartTime" placeholder="开始时间"/>
+                    </div>
+                    <div class="input-group date date-picker">
+                        <input type="text" class="form-control form-filter input-sm" readonly="readonly" id="updateEndTime" placeholder="结束时间"/>
+                    </div>
+                </td>
+                <td>
+                    <select id="select_status" class="form-control form-filter input-sm">
+                        <option value="">请选择...</option>
+                        <option value="-1">失败</option>
+                        <option value="1">成功</option>
+                        <option value="0">处理中</option>
+                    </select>
+                </td>
+                <td>
+                    <select id="select_type" class="form-control form-filter input-sm">
+                        <option value="">请选择...</option>
+                        <option value="0">PGC</option>
+                        <option value="1">UGC</option>
+                    </select>
+                </td>
+                <td>
+                    <select id="select_errorCode" class="form-control form-filter input-sm">
+                        <option value="">请选择...</option>
+                        <option value="T00000">套壳成功</option>
+                        <option value="T00001">处理中</option>
+                        <option value="T00002">无圈子</option>
+                        <option value="T00003">取奇谱视频信息失败</option>
+                        <option value="T00004">抛出异常</option>
+                        <option value="T00005">ugc|啪啪奇|片段实体|过滤</option>
+                        <option value="T00006">创建feed失败</option>
+                        <option value="T00007">视频类型错误</option>
+                        <option value="T00008">无pgc发布策略</option>
+                    </select>
+                </td>
+                <td>
+                    <select id="select_videoStatus" class="form-control form-filter input-sm">
+                        <option value="">请选择...</option>
+                        <option value="1">下线</option>
+                        <option value="0">在线</option>
+                    </select>
+                </td>
+                <td>
+                    <div class="margin-bottom-5">
+                        <button class="btn btn-sm yellow filter-submit margin-bottom" id="submit"><i class="fa fa-search"></i> Search</button>
+                    </div>
+                </td>
+            </tr>
+            </thead>
+            <tbody id="tableData">
+
+            </tbody>
+        </table>
+    </div>
+
+    <div class="row">
+        <!--添加分页控件-->
+        <ul id="pages"></ul>
+    </div>
+</div>
+<script type="text/javascript">
+    //初始化日期控件
+    $(function () {
+        var startDateTextBox = $("#updateStartTime");
+        var endDateTextBox = $("#updateEndTime");
+        startDateTextBox.datetimepicker({
+            //showOn: "button",
+            //buttonImage: "./css/images/icon_calendar.gif",
+            //buttonImageOnly: true,
+            showSecond: true,
+            timeFormat: 'hh:mm:ss',
+            stepHour: 1,
+            stepMinute: 1,
+            stepSecond: 1,
+            onClose: function(dateText, inst) {
+                if (endDateTextBox.val() != '') {
+                    var testStartDate = startDateTextBox.datetimepicker('getDate');
+                    var testEndDate = endDateTextBox.datetimepicker('getDate');
+                    if (testStartDate > testEndDate)
+                        endDateTextBox.datetimepicker('setDate', testStartDate);
+                }
+                else {
+                    endDateTextBox.val(dateText);
+                }
+            },
+            onSelect: function (selectedDateTime){
+                endDateTextBox.datetimepicker('option', 'minDate', startDateTextBox.datetimepicker('getDate') );
+            }
+        });
+        endDateTextBox.datetimepicker({
+            //showOn: "button",
+            //buttonImage: "./css/images/icon_calendar.gif",
+            //buttonImageOnly: true,
+            showSecond: true,
+            timeFormat: 'hh:mm:ss',
+            stepHour: 1,
+            stepMinute: 1,
+            stepSecond: 1,
+            onClose: function(dateText, inst) {
+                if (startDateTextBox.val() != '') {
+                    var testStartDate = startDateTextBox.datetimepicker('getDate');
+                    var testEndDate = endDateTextBox.datetimepicker('getDate');
+                    if (testStartDate > testEndDate)
+                        startDateTextBox.datetimepicker('setDate', testEndDate);
+                }
+                else {
+                    startDateTextBox.val(dateText);
+                }
+            },
+            onSelect: function (selectedDateTime){
+                startDateTextBox.datetimepicker('option', 'maxDate', endDateTextBox.datetimepicker('getDate') );
+            }
+        });
+
+        $("#submit").click(function(){
+            if(startDateTextBox.val()==""){
+                alert("数据量太大，请选择日期！！");
+                return;
+            }
+            var updateStartTime = startDateTextBox.datetimepicker('getDate').getTime();
+            var updateEndTime = endDateTextBox.datetimepicker('getDate').getTime();
+            var tvId = $("#tvId").val();
+            var status = $("#select_status").val();
+            var type = $("#select_type").val();
+            var errorCode = $("#select_errorCode").val();
+            var videoStatus = $("#select_videoStatus").val();
+            var datas = { "updateStartTime":updateStartTime,
+                          "updateEndTime":updateEndTime,
+                          "tvId":tvId,
+                          "status":status,
+                          "type":type,
+                          "errorCode":errorCode,
+                          "videoStatus":videoStatus,
+                          "page":0};
+            console.log(datas);
+    	    jQuery.ajax({
+                type : "GET",
+                //禁用缓存，否则只要url不变，只返回第一执行结果
+                cache:false,
+                url : getRootPath()+"/mulConQuery",
+                dataType : 'json',
+                data : datas,
+                success : function(data) {
+                    if(data.msg=="success"){
+                        if(data.page==null || data.page.numberOfElements==0){
+                            $("#tableData").html("");
+                            $("#pages").html("");
+                            alert("数据为空");
+                            return;
+                        }
+                    }
+                    $("#tableData").html("");
+                    var tabDataHtml="";
+                    $.each(data.page.content,function(i,item){
+                       tabDataHtml+='<tr>';
+                        tabDataHtml+='<td>'+item.tvId+'</td>';
+                        tabDataHtml+='<td>'+item.updateTime+'</td>';
+                        //判断status
+                        tabDataHtml+='<td>';
+                        if(item.status == "-1"){
+                            tabDataHtml+="处理失败";
+                        }else if(item.status == "1"){
+                            tabDataHtml+="处理成功";
+                        }else{
+                            tabDataHtml+="处理中";
+                        }
+                        tabDataHtml+='</td>';
+                        //判断Type统计类型
+                        tabDataHtml+='<td>';
+                        if(item.type == "0"){
+                             tabDataHtml+="PGC";
+                        }else{
+                            tabDataHtml+="UGC";
+                        }
+                        tabDataHtml+='</td>';
+                        //判断errorCode
+                        tabDataHtml+='<td>';
+                        if(item.errorCode == "T00000"){
+                            tabDataHtml+="套壳成功";
+                        }else if(item.errorCode == "T00001"){
+                            tabDataHtml+="处理中";
+                        }else if(item.errorCode == "T00002"){
+                            tabDataHtml+="无圈子";
+                        }else if(item.errorCode == "T00003"){
+                            tabDataHtml+="取奇谱视频信息失败";
+                        }else if(item.errorCode == "T00004"){
+                            tabDataHtml+="抛出异常";
+                        }else if(item.errorCode == "T00005"){
+                            tabDataHtml+="ugc|啪啪奇|片段实体|过滤";
+                        }else if(item.errorCode == "T00006"){
+                            tabDataHtml+="创建feed失败";
+                        }else if(item.errorCode == "T00007"){
+                            tabDataHtml+="视频类型错误";
+                        }else if(item.errorCode == "T00008"){
+                            tabDataHtml+="无pgc发布策略";
+                        }
+                        tabDataHtml+='</td>';
+                        //判断videoStatus统计类型
+                        tabDataHtml+='<td>';
+                        if(item.videoStatus == "0"){
+                             tabDataHtml+="在线";
+                        }else{
+                            tabDataHtml+="下线";
+                        }
+                        tabDataHtml+='</td>';
+
+                        tabDataHtml+='</tr>';
+                    });
+                    $("#tableData").html(tabDataHtml);
+                    alert("共获取了"+data.page.numberOfElements+"条数据");
+                    //分页功能
+                    var options = {
+                        bootstrapMajorVersion: 3,
+                        currentPage:1,
+                        totalPages:data.page.totalPages,
+                        itemTexts: function (type, page, current) {
+                                      switch (type) {
+                                        case "first":
+                                          return "首页";
+                                        case "prev":
+                                          return "上一页";
+                                        case "next":
+                                          return "下一页";
+                                        case "last":
+                                          return "末页";
+                                        case "page":
+                                          return page;
+                                      }
+                        },
+                        onPageClicked: function (event, originalEvent, type, page) {
+                            var updateStartTime = startDateTextBox.datetimepicker('getDate').getTime();
+                            var updateEndTime = endDateTextBox.datetimepicker('getDate').getTime();
+                            var tvId = $("#tvId").val();
+                            var status = $("#select_status").val();
+                            var type = $("#select_type").val();
+                            var errorCode = $("#select_errorCode").val();
+                            var videoStatus = $("#select_videoStatus").val();
+                            var datas = { "updateStartTime":updateStartTime,
+                                          "updateEndTime":updateEndTime,
+                                          "tvId":tvId,
+                                          "status":status,
+                                          "type":type,
+                                          "errorCode":errorCode,
+                                          "videoStatus":videoStatus,
+                                          "page":page-1};
+                            console.log(datas);
+                            jQuery.ajax({
+                                type : "GET",
+                                //禁用缓存，否则只要url不变，只返回第一执行结果
+                                cache:false,
+                                url : getRootPath()+"/mulConQuery",
+                                dataType : 'json',
+                                data : datas,
+                                success : function(data) {
+                                    if(data.msg=="success"){
+                                        if(data.page==null || data.page.numberOfElements==0){
+                                            $("#tableData").html("");
+                                            alert("数据为空");
+                                            return;
+                                        }
+                                    }
+                                     $("#tableData").html("");
+                                    var tabDataHtml="";
+                                    $.each(data.page.content,function(i,item){
+                                       tabDataHtml+='<tr>';
+                                        tabDataHtml+='<td>'+item.tvId+'</td>';
+                                        tabDataHtml+='<td>'+item.updateTime+'</td>';
+                                        //判断status
+                                        tabDataHtml+='<td>';
+                                        if(item.status == "-1"){
+                                            tabDataHtml+="处理失败";
+                                        }else if(item.status == "1"){
+                                            tabDataHtml+="处理成功";
+                                        }else{
+                                            tabDataHtml+="处理中";
+                                        }
+                                        tabDataHtml+='</td>';
+                                        //判断Type统计类型
+                                        tabDataHtml+='<td>';
+                                        if(item.type == "0"){
+                                             tabDataHtml+="PGC";
+                                        }else{
+                                            tabDataHtml+="UGC";
+                                        }
+                                        tabDataHtml+='</td>';
+                                        //判断errorCode
+                                        tabDataHtml+='<td>';
+                                        if(item.errorCode == "T00000"){
+                                            tabDataHtml+="套壳成功";
+                                        }else if(item.errorCode == "T00001"){
+                                            tabDataHtml+="处理中";
+                                        }else if(item.errorCode == "T00002"){
+                                            tabDataHtml+="无圈子";
+                                        }else if(item.errorCode == "T00003"){
+                                            tabDataHtml+="取奇谱视频信息失败";
+                                        }else if(item.errorCode == "T00004"){
+                                            tabDataHtml+="抛出异常";
+                                        }else if(item.errorCode == "T00005"){
+                                            tabDataHtml+="ugc|啪啪奇|片段实体|过滤";
+                                        }else if(item.errorCode == "T00006"){
+                                            tabDataHtml+="创建feed失败";
+                                        }else if(item.errorCode == "T00007"){
+                                            tabDataHtml+="视频类型错误";
+                                        }else if(item.errorCode == "T00008"){
+                                            tabDataHtml+="无pgc发布策略";
+                                        }
+                                        tabDataHtml+='</td>';
+                                        //判断videoStatus统计类型
+                                        tabDataHtml+='<td>';
+                                        if(item.videoStatus == "0"){
+                                             tabDataHtml+="在线";
+                                        }else{
+                                            tabDataHtml+="下线";
+                                        }
+                                        tabDataHtml+='</td>';
+
+                                        tabDataHtml+='</tr>';
+                                    });
+                                    $("#tableData").html(tabDataHtml);
+                                    alert("共获取了"+data.page.numberOfElements+"条数据");
+                                },
+                                error:function(data){
+                                        alert("数据获取失败！");
+                                }
+                            });
+                        }
+                    }
+                    $('#pages').bootstrapPaginator(options);
+                },
+                error:function(data){
+                    alert("数据获取失败！");
+                }
+            });
+        });
+    });
+</script>
+

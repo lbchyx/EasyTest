@@ -1,0 +1,334 @@
+<div class="portlet-body col-md-10 col-md-offset-1">
+    <div class="table-container">
+        <table class="table table-striped table-bordered table-hover" id="datatable_ajax">
+            <thead>
+            <tr role="row" class="heading">
+                <th width="5%">
+                    圈子ID
+                </th>
+                <th width="10%">
+                    套壳时间
+                </th>
+                <th width="6%">
+                    实体ID
+                </th>
+                <th width="6%">
+                    FeedID
+                </th>
+                <th width="6%">
+                    视频ID
+                </th>
+                <th width="15%">
+                    错误码
+                </th>
+                <th width="8%">
+                    状态
+                </th>
+                <th width="5%">
+                    操作
+                </th>
+            </tr>
+            <tr role="row" class="filter">
+                <td>
+                    <input type="text" class="form-control form-filter input-sm" id="circleId"/>
+                </td>
+                <td>
+                    <div class="input-group date date-picker margin-bottom-5">
+                        <input type="text" class="form-control form-filter input-sm" readonly="readonly" id="updateStartTime" placeholder="开始时间"/>
+                    </div>
+                    <div class="input-group date date-picker">
+                        <input type="text" class="form-control form-filter input-sm" readonly="readonly" id="updateEndTime" placeholder="结束时间"/>
+                    </div>
+                </td>
+                <td>
+                    <input type="text" class="form-control form-filter input-sm" id="entityId"/>
+                </td>
+                <td>
+                    <input type="text" class="form-control form-filter input-sm" id="feedId"/>
+                </td>
+                <td>
+                    <input type="text" class="form-control form-filter input-sm" id="tvId"/>
+                </td>
+                <td>
+                    <select id="select_errorCode" class="form-control form-filter input-sm">
+                        <option value="">请选择...</option>
+                        <option value="A00001">未登录</option>
+                        <option value="A00002">数据不存在</option>
+                        <option value="A00003">处理中</option>
+                        <option value="A00004">无圈子</option>
+                        <option value="P00706">内容中有不符合当地法律的词汇</option>
+                        <option value="P00707">发布重复feed</option>
+                        <option value="P00710">圈子不存在</option>
+                    </select>
+                </td>
+                <td>
+                    <select id="select_status" class="form-control form-filter input-sm">
+                        <option value="">请选择...</option>
+                        <option value="0">处理中</option>
+                        <option value="-1">处理失败</option>
+                        <option value="1">处理成功</option>
+                    </select>
+                </td>
+                <td>
+                    <div class="margin-bottom-5">
+                        <button class="btn btn-sm yellow filter-submit margin-bottom" id="submit"><i class="fa fa-search"></i> Search</button>
+                    </div>
+                </td>
+            </tr>
+            </thead>
+            <tbody id="tableData">
+
+            </tbody>
+        </table>
+    </div>
+
+    <div class="row">
+        <!--添加分页控件-->
+        <ul id="pages"></ul>
+    </div>
+</div>
+<script type="text/javascript">
+    //初始化日期控件
+    $(function () {
+        var startDateTextBox = $("#updateStartTime");
+        var endDateTextBox = $("#updateEndTime");
+        startDateTextBox.datetimepicker({
+            //showOn: "button",
+            //buttonImage: "./css/images/icon_calendar.gif",
+            //buttonImageOnly: true,
+            showSecond: true,
+            timeFormat: 'hh:mm:ss',
+            stepHour: 1,
+            stepMinute: 1,
+            stepSecond: 1,
+            onClose: function(dateText, inst) {
+                if (endDateTextBox.val() != '') {
+                    var testStartDate = startDateTextBox.datetimepicker('getDate');
+                    var testEndDate = endDateTextBox.datetimepicker('getDate');
+                    if (testStartDate > testEndDate)
+                        endDateTextBox.datetimepicker('setDate', testStartDate);
+                }
+                else {
+                    endDateTextBox.val(dateText);
+                }
+            },
+            onSelect: function (selectedDateTime){
+                endDateTextBox.datetimepicker('option', 'minDate', startDateTextBox.datetimepicker('getDate') );
+            }
+        });
+        endDateTextBox.datetimepicker({
+            //showOn: "button",
+            //buttonImage: "./css/images/icon_calendar.gif",
+            //buttonImageOnly: true,
+            showSecond: true,
+            timeFormat: 'hh:mm:ss',
+            stepHour: 1,
+            stepMinute: 1,
+            stepSecond: 1,
+            onClose: function(dateText, inst) {
+                if (startDateTextBox.val() != '') {
+                    var testStartDate = startDateTextBox.datetimepicker('getDate');
+                    var testEndDate = endDateTextBox.datetimepicker('getDate');
+                    if (testStartDate > testEndDate)
+                        startDateTextBox.datetimepicker('setDate', testEndDate);
+                }
+                else {
+                    startDateTextBox.val(dateText);
+                }
+            },
+            onSelect: function (selectedDateTime){
+                startDateTextBox.datetimepicker('option', 'maxDate', endDateTextBox.datetimepicker('getDate') );
+            }
+        });
+
+        $("#submit").click(function(){
+            if(startDateTextBox.val()==""){
+                alert("数据量太大，请选择日期！！");
+                return;
+            }
+            var updateStartTime = startDateTextBox.datetimepicker('getDate').getTime();
+            var updateEndTime = endDateTextBox.datetimepicker('getDate').getTime();
+            var tvId = $("#tvId").val();
+            var feedId = $("#feedId").val();
+            var circleId = $("#circleId").val();
+            var entityId = $("#entityId").val();
+            var status = $("#select_status").val();
+            var errorCode = $("#select_errorCode").val();
+            var datas = { "createStartTime":updateStartTime,
+                          "createEndTime":updateEndTime,
+                          "tvId":tvId,
+                          "feedId":feedId,
+                          "circleId":circleId,
+                          "status":status,
+                          "entityId":entityId,
+                          "errorCode":errorCode,
+                          "page":0};
+            console.log(datas);
+    	    jQuery.ajax({
+                type : "GET",
+                //禁用缓存，否则只要url不变，只返回第一执行结果
+                cache:false,
+                url : getRootPath()+"/recordsMulConQuery",
+                dataType : 'json',
+                data : datas,
+                success : function(data) {
+                    if(data.msg=="success"){
+                        if(data.page==null || data.page.numberOfElements==0){
+                            $("#tableData").html("");
+                            $("#pages").html("");
+                            alert("数据为空");
+                            return;
+                        }
+                    }
+                    $("#tableData").html("");
+				    var tabDataHtml="";
+                    $.each(data.page.content,function(i,item){
+                        tabDataHtml+='<tr>';
+                        tabDataHtml+='<td>'+item.circleId+'</td>';
+                        tabDataHtml+='<td>'+item.createTime+'</td>';
+                        tabDataHtml+='<td>'+item.entityId+'</td>';
+                        tabDataHtml+='<td>'+item.feedId+'</td>';
+                        tabDataHtml+='<td>'+item.tvId+'</td>';
+                        //判断errorCode
+                        tabDataHtml+='<td>';
+                        if(item.errorCode == "A00001"){
+                            tabDataHtml+="未登录";
+                        }else if(item.errorCode == "A00002"){
+                            tabDataHtml+="数据不存在";
+                        }else if(item.errorCode == "A00003"){
+                            tabDataHtml+="处理中";
+                        }else if(item.errorCode == "A00004"){
+                            tabDataHtml+="无圈子";
+                        }else if(item.errorCode == "P00706"){
+                            tabDataHtml+="内容中有不符合当地法律的词汇";
+                        }else if(item.errorCode == "P00707"){
+                            tabDataHtml+="发布重复feed";
+                        }else if(item.errorCode == "P00710"){
+                            tabDataHtml+="圈子不存在";
+                        }
+                        tabDataHtml+='</td>';
+                        //判断status
+                        tabDataHtml+='<td>';
+                        if(item.status == "-1"){
+                            tabDataHtml+="处理失败";
+                        }else if(item.status == "1"){
+                            tabDataHtml+="处理成功";
+                        }else{
+                            tabDataHtml+="处理中";
+                        }
+                        tabDataHtml+='</td>';
+                        tabDataHtml+='</tr>';
+                    });
+                    $("#tableData").html(tabDataHtml);
+                    alert("共获取了"+data.page.numberOfElements+"条数据");
+                    //分页功能
+                    var options = {
+                        bootstrapMajorVersion: 3,
+                        currentPage:1,
+                        totalPages:data.page.totalPages,
+                        itemTexts: function (type, page, current) {
+                                      switch (type) {
+                                        case "first":
+                                          return "首页";
+                                        case "prev":
+                                          return "上一页";
+                                        case "next":
+                                          return "下一页";
+                                        case "last":
+                                          return "末页";
+                                        case "page":
+                                          return page;
+                                      }
+                        },
+                        onPageClicked: function (event, originalEvent, type, page) {
+                            var updateStartTime = startDateTextBox.datetimepicker('getDate').getTime();
+                            var updateEndTime = endDateTextBox.datetimepicker('getDate').getTime();
+                            var tvId = $("#tvId").val();
+                            var feedId = $("#feedId").val();
+                            var circleId = $("#circleId").val();
+                            var entityId = $("#entityId").val();
+                            var status = $("#select_status").val();
+                            var errorCode = $("#select_errorCode").val();
+                            var datas = { "createStartTime":updateStartTime,
+                                          "createEndTime":updateEndTime,
+                                          "tvId":tvId,
+                                          "feedId":feedId,
+                                          "circleId":circleId,
+                                          "status":status,
+                                          "entityId":entityId,
+                                          "errorCode":errorCode,
+                                          "page":page-1};
+                            jQuery.ajax({
+                                type : "GET",
+                                //禁用缓存，否则只要url不变，只返回第一执行结果
+                                cache:false,
+                                url : getRootPath()+"/recordsMulConQuery",
+                                dataType : 'json',
+                                data : datas,
+                                success : function(data) {
+                                    if(data.msg=="success"){
+                                        if(data.page==null || data.page.numberOfElements==0){
+                                            $("#tableData").html("");
+                                            $("#pages").html("");
+                                            alert("数据为空");
+                                            return;
+                                        }
+                                    }
+                                    $("#tableData").html("");
+                                    var tabDataHtml="";
+                                    $.each(data.page.content,function(i,item){
+                                        tabDataHtml+='<tr>';
+                                        tabDataHtml+='<td>'+item.circleId+'</td>';
+                                        tabDataHtml+='<td>'+item.createTime+'</td>';
+                                        tabDataHtml+='<td>'+item.entityId+'</td>';
+                                        tabDataHtml+='<td>'+item.feedId+'</td>';
+                                        tabDataHtml+='<td>'+item.tvId+'</td>';
+                                        //判断errorCode
+                                        tabDataHtml+='<td>';
+                                        if(item.errorCode == "A00001"){
+                                            tabDataHtml+="未登录";
+                                        }else if(item.errorCode == "A00002"){
+                                            tabDataHtml+="数据不存在";
+                                        }else if(item.errorCode == "A00003"){
+                                            tabDataHtml+="处理中";
+                                        }else if(item.errorCode == "A00004"){
+                                            tabDataHtml+="无圈子";
+                                        }else if(item.errorCode == "P00706"){
+                                            tabDataHtml+="内容中有不符合当地法律的词汇";
+                                        }else if(item.errorCode == "P00707"){
+                                            tabDataHtml+="发布重复feed";
+                                        }else if(item.errorCode == "P00710"){
+                                            tabDataHtml+="圈子不存在";
+                                        }
+                                        tabDataHtml+='</td>';
+                                        //判断status
+                                        tabDataHtml+='<td>';
+                                        if(item.status == "-1"){
+                                            tabDataHtml+="处理失败";
+                                        }else if(item.status == "1"){
+                                            tabDataHtml+="处理成功";
+                                        }else{
+                                            tabDataHtml+="处理中";
+                                        }
+                                        tabDataHtml+='</td>';
+                                        tabDataHtml+='</tr>';
+                                    });
+                                    $("#tableData").html(tabDataHtml);
+                                    alert("共获取了"+data.page.numberOfElements+"条数据");
+                                },
+                                error:function(data){
+                                        alert("数据获取失败！");
+                                }
+                            });
+                        }
+                    }
+                    $('#pages').bootstrapPaginator(options);
+                },
+                error:function(data){
+                    alert("数据获取失败！");
+                }
+            });
+        });
+    });
+</script>
+
